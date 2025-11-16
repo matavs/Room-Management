@@ -1,9 +1,21 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { useRouter } from "expo-router";
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+
+  const onLogin = () => {
+    // Simple validation; replace with real auth
+    if (!username.trim() || !password) {
+      Alert.alert("Missing credentials", "Please enter username and password.");
+      return;
+    }
+    // Navigate to the Home screen (file-based routing: app/home.jsx -> /home)
+    router.push("/home");
+  };
 
   return (
     <View style={styles.container}>
@@ -18,6 +30,7 @@ export default function LoginScreen() {
         <TextInput
           style={styles.input}
           placeholder="Username"
+          placeholderTextColor="#9CA3AF"
           value={username}
           onChangeText={setUsername}
         />
@@ -26,12 +39,13 @@ export default function LoginScreen() {
         <TextInput
           style={styles.input}
           placeholder="password"
+          placeholderTextColor="#9CA3AF"
           secureTextEntry
           value={password}
           onChangeText={setPassword}
         />
 
-        <TouchableOpacity style={styles.button}>
+        <TouchableOpacity style={styles.button} onPress={onLogin}>
           <Text style={styles.buttonText}>Log In</Text>
         </TouchableOpacity>
 
@@ -68,7 +82,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: "50%",
-    backgroundColor: "#1f2937", 
+    backgroundColor: "#1f2937",
   },
   header: {
     fontSize: 28,
@@ -100,6 +114,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     marginBottom: 15,
+    color: "#000",
   },
   button: {
     backgroundColor: "#000",
