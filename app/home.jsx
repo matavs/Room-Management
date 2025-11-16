@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import {
   SafeAreaView,
   View,
@@ -15,14 +15,17 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /*
-  Home screen with working "Add Room" button and an Add Room form modal.
-  - Tapping the FAB opens a modal form (based on the blueprint).
-  - Form fields: Select Room, Date, Start time, End time, Event title, Expected attendees.
-  - Submitting the form validates minimal fields and adds a new room to the top of the list.
-  - No extra native date/time libraries added: date/time fields are text inputs with placeholders.
-    (You can replace them with proper pickers when adding a dependency.)
+  Home screen with profile icon that navigates to Settings.
+  - Loads persisted profile info (image/displayName) from AsyncStorage key 'profileData'
+  - Tapping the profile image navigates to /settings (app/settings.jsx) where it can be changed
+  - If no custom profile image is set, falls back to assets/icon.png
+  - NOTE: Requires installing:
+      expo install expo-image-picker
+      npm install @react-native-async-storage/async-storage
 */
 
 const SAMPLE_ROOMS_BASE = [
@@ -105,13 +108,15 @@ function RoomCard({ item }) {
 }
 
 export default function HomeScreen() {
+  const router = useRouter();
+
   // List of rooms (can be pulled from backend later)
   const [rooms, setRooms] = useState(SAMPLE_ROOMS_BASE);
 
   // Search
   const [query, setQuery] = useState("");
 
-  // Modal/form state
+  // Modal/form state (Add Room)
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState("");
   const [date, setDate] = useState("");
@@ -119,11 +124,51 @@ export default function HomeScreen() {
   const [endTime, setEndTime] = useState("");
   const [eventTitle, setEventTitle] = useState("");
   const [expectedAttendees, setExpectedAttendees] = useState("");
-
   const [refreshing, setRefreshing] = useState(false);
 
+  // Profile: image & displayName loaded from AsyncStorage
+  const [profile, setProfile] = useState({ imageUri: null, displayName: "" });
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem("profileData");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          setProfile({
+            imageUri: parsed.imageUri || null,
+            displayName: parsed.displayName || "",
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to load profile data", e);
+      }
+    })();
+  }, []);
+
+  // Save profile data helper — used by settings screen when it navigates back
+  // We'll re-load profile when returning from settings by listening to router events.
+  useEffect(() => {
+    const unsubscribe = router.addListener?.("focus", () => {
+      (async () => {
+        try {
+          const raw = await AsyncStorage.getItem("profileData");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            setProfile({
+              imageUri: parsed.imageUri || null,
+              displayName: parsed.displayName || "",
+            });
+          }
+        } catch (e) {
+          // ignore
+        }
+      })();
+    });
+    return () => unsubscribe?.();
+  }, [router]);
+
   const roomNames = useMemo(() => {
-    // offer existing room names as choices in the Select Room field
     const names = Array.from(new Set(SAMPLE_ROOMS_BASE.map((r) => r.name)));
     return names;
   }, []);
@@ -154,18 +199,16 @@ export default function HomeScreen() {
   };
 
   const submitForm = () => {
-    // Minimal validation: require a room name and event title
     if (!selectedRoom.trim()) {
       return alert("Please select or enter a room name.");
     }
     if (!eventTitle.trim()) {
       return alert("Please enter an event title.");
     }
-    // Build new room item
     const newRoom = {
       id: Date.now().toString(),
       name: selectedRoom,
-      floor: "", // optional: could add field for floor in form
+      floor: "",
       capacity: expectedAttendees || "N/A",
       status: "Upcoming",
       event:
@@ -180,7 +223,6 @@ export default function HomeScreen() {
     setModalVisible(false);
   };
 
-  // Simple deterministic color picker based on name
   const pickColorForName = (name) => {
     const colors = ["#FF9F43", "#2ECC71", "#E74C3C", "#6C5CE7", "#00B4D8", "#F472B6"];
     let hash = 0;
@@ -199,8 +241,16 @@ export default function HomeScreen() {
             <Text style={styles.title}>Rooms</Text>
           </View>
 
-          <TouchableOpacity style={styles.profileBtn} activeOpacity={0.8}>
-            <Image source={require("../assets/icon.png")} style={styles.profileImage} />
+          <TouchableOpacity
+            style={styles.profileBtn}
+            activeOpacity={0.8}
+            onPress={() => router.push("/settings")}
+          >
+            {profile.imageUri ? (
+              <Image source={{ uri: profile.imageUri }} style={styles.profileImage} />
+            ) : (
+              <Image source={require("../assets/icon.png")} style={styles.profileImage} />
+            )}
           </TouchableOpacity>
         </View>
 
@@ -265,16 +315,8 @@ export default function HomeScreen() {
               <ScrollView contentContainerStyle={{ padding: 18 }}>
                 <Text style={styles.modalTitle}>Add Room / Event</Text>
 
-                {/* Select Room (tappable list) */}
                 <Text style={styles.modalLabel}>SELECT ROOM</Text>
-                <TouchableOpacity
-                  style={styles.selectInput}
-                  onPress={() => {
-                    // toggle simple inline picker by swapping between existing names and typed input
-                    // For simplicity we allow typing directly into the field below when tap -> focus
-                  }}
-                  activeOpacity={0.8}
-                >
+                <TouchableOpacity style={styles.selectInput} activeOpacity={0.9}>
                   <TextInput
                     placeholder="Choose or type room name"
                     placeholderTextColor="#94a3b8"
@@ -342,7 +384,13 @@ export default function HomeScreen() {
                   <Text style={styles.enterBtnText}>ENTER</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => { resetForm(); setModalVisible(false); }}>
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => {
+                    resetForm();
+                    setModalVisible(false);
+                  }}
+                >
                   <Text style={styles.cancelBtnText}>Cancel</Text>
                 </TouchableOpacity>
               </ScrollView>
