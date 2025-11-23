@@ -762,4 +762,4 @@ const styles = StyleSheet.create({
   tabBtnActive: { backgroundColor: '#3B444A' },
   tabText: { color: '#9fb4c8', fontWeight: '700', fontSize: 12 },
   tabTextActive: { color: '#fff' },
-});cd "C:\Users\imelm\Downloads\Room-Management-main"
+});
