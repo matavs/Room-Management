@@ -1,6 +1,30 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import {
+  SafeAreaView,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  Platform,
+  Alert,
+  ScrollView,
+} from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+
+const SHADOW = Platform.select({
+  ios: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+  },
+  android: {
+    elevation: 6,
+  },
+});
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -13,126 +37,158 @@ export default function LoginScreen() {
       Alert.alert("Missing credentials", "Please enter username and password.");
       return;
     }
-    // Navigate to the Home screen (file-based routing: app/home.jsx -> /home)
     router.push("/home");
   };
 
   return (
-    <View style={styles.container}>
-      {/* Background "fake gradient" using two layered Views */}
-      <View style={styles.topBackground} />
-      <View style={styles.bottomBackground} />
+    <SafeAreaView style={styles.safe}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        <View style={styles.container}>
 
-      <Text style={styles.header}>ROOM MANAGER</Text>
+          {/* Header */}
+          <View style={styles.headerRow}>
+            <Text style={styles.welcome}>Welcome back</Text>
+            <Ionicons name="log-in-outline" size={28} color="#1F6FEB" />
+          </View>
+          <Text style={styles.title}>Room Manager</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.label}>Username</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Username"
-          placeholderTextColor="#9CA3AF"
-          value={username}
-          onChangeText={setUsername}
-        />
+          {/* Card (login form) */}
+          <View style={styles.card}>
+            <Text style={styles.modalTitle}>Sign In</Text>
 
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="password"
-          placeholderTextColor="#9CA3AF"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
+            <Text style={styles.modalLabel}>USERNAME</Text>
+            <TextInput
+              style={styles.inputPill}
+              placeholder="Username"
+              placeholderTextColor="#94a3b8"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
 
-        <TouchableOpacity style={styles.button} onPress={onLogin}>
-          <Text style={styles.buttonText}>Log In</Text>
-        </TouchableOpacity>
+            <Text style={styles.modalLabel}>PASSWORD</Text>
+            <TextInput
+              style={styles.inputPill}
+              placeholder="Password"
+              placeholderTextColor="#94a3b8"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
 
-        <TouchableOpacity style={[styles.button, { backgroundColor: "#333" }]}>
-          <Text style={styles.buttonText}>Sign Up</Text>
-        </TouchableOpacity>
+            <TouchableOpacity style={styles.enterBtn} onPress={onLogin}>
+              <Text style={styles.enterBtnText}>Log In</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity>
-          <Text style={styles.forgotText}>Forgot password?</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+            <TouchableOpacity style={styles.cancelBtn}>
+              <Text style={styles.cancelBtnText}>Sign Up</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity>
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#0F1724",
+  },
   container: {
     flex: 1,
-    alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0f172a",
+    padding: 16,
   },
-  topBackground: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "50%",
-    backgroundColor: "#9ca3af",
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
   },
-  bottomBackground: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: "50%",
-    backgroundColor: "#1f2937",
+  welcome: {
+    color: "#9FB4C8",
+    fontSize: 13,
+    fontWeight: "500",
   },
-  header: {
-    fontSize: 28,
-    fontWeight: "600",
-    color: "#fff",
+  title: {
+    color: "#E6F2FA",
+    fontSize: 26,
+    fontWeight: "700",
     marginBottom: 30,
     letterSpacing: 1,
   },
   card: {
-    width: "85%",
-    backgroundColor: "#fff",
+    backgroundColor: "#172028",
     borderRadius: 12,
     paddingVertical: 30,
-    paddingHorizontal: 25,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    paddingHorizontal: 24,
+    ...SHADOW,
   },
-  label: {
-    fontSize: 14,
-    color: "#000",
-    marginBottom: 4,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 15,
-    color: "#000",
-  },
-  button: {
-    backgroundColor: "#000",
-    borderRadius: 8,
-    paddingVertical: 10,
-    marginTop: 8,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
+  modalTitle: {
+    color: "#EAF6FF",
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 12,
     textAlign: "center",
-    fontWeight: "500",
+    letterSpacing: 1,
+  },
+  modalLabel: {
+    color: "#E6EEF8",
+    fontSize: 11,
+    marginBottom: 6,
+    marginTop: 8,
+    letterSpacing: 0.8,
+  },
+  inputPill: {
+    backgroundColor: "#EEF2F6",
+    borderRadius: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    color: "#0f1724",
+    fontWeight: "600",
+    fontSize: 15,
+    marginBottom: 6,
+  },
+  enterBtn: {
+    marginTop: 18,
+    backgroundColor: "#1F6FEB",
+    paddingVertical: 12,
+    borderRadius: 22,
+    alignItems: "center",
+    ...SHADOW,
+  },
+  enterBtnText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  cancelBtn: {
+    marginTop: 12,
+    paddingVertical: 12,
+    borderRadius: 18,
+    alignItems: "center",
+    backgroundColor: "#263238",
+    ...SHADOW,
+  },
+  cancelBtnText: {
+    color: "#EAF6FF",
+    opacity: 0.9,
+    fontWeight: "700",
+    fontSize: 16,
   },
   forgotText: {
-    color: "#1e3a8a",
+    color: "#1F6FEB",
     fontSize: 14,
     textAlign: "center",
     marginTop: 15,
     textDecorationLine: "underline",
+    fontWeight: "500",
+    letterSpacing: 0.3,
   },
 });
