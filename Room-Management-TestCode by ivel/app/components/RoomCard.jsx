@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { View, Text, Image, StyleSheet, Pressable, Platform, Alert } from "react-native";
+import React, { useState } from "react"; 
+import { View, Text, Image, StyleSheet, Pressable, Platform, Alert, ActivityIndicator } from "react-native";
 import RoomTimer from "./RoomTimer"; 
 import { Ionicons } from "@expo/vector-icons";
 
@@ -12,68 +12,70 @@ export default function RoomCard({
   isAdmin 
 }) {
   
+  // --- 0. LOCAL STATE (FIX: Instant updates & visual feedback) ---
+  const [loadingId, setLoadingId] = useState(null);
+  const [cancelledIds, setCancelledIds] = useState([]); 
+
   // --- 1. DATA PREP ---
-  // FIX: Added item.bookings and item.lastUpdated to the dependency array below
-  const { status, displayBooking, displayTitle, displayStart, displayEnd, activeBooking, upcoming } = useMemo(() => {
-    const bookings = Array.isArray(item.bookings) ? item.bookings.slice() : [];
+  // FIX: Filter out bookings we just cancelled locally so they disappear immediately
+  const rawBookings = Array.isArray(item.bookings) ? item.bookings : [];
+  const bookings = rawBookings.filter(b => !cancelledIds.includes(b.id));
 
-    // Handle legacy/simple events
-    if ((!bookings || bookings.length === 0) && item.startTime && item.endTime) {
-      bookings.push({
-        id: "__legacy__",
-        startTime: item.startTime,
-        endTime: item.endTime,
-        description: item.eventTitle || "",
-        bookedBy: item.bookedBy || null,
-        createdAt: item.createdAt || null,
-      });
-    }
+  // Handle legacy/simple events
+  if ((!bookings || bookings.length === 0) && item.startTime && item.endTime) {
+    bookings.push({
+      id: "__legacy__",
+      startTime: item.startTime,
+      endTime: item.endTime,
+      description: item.eventTitle || "",
+      bookedBy: item.bookedBy || null,
+      createdAt: item.createdAt || null,
+    });
+  }
 
-    const now = new Date();
-    
-    // Check if occupied RIGHT NOW
-    const currentActive = bookings.find(
-      (b) => new Date(b.startTime) <= now && now < new Date(b.endTime)
-    );
-    
-    // Find the NEXT booking
-    const currentUpcoming = bookings
-      .filter((b) => new Date(b.startTime) > now)
-      .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))[0];
+  const now = new Date();
+  
+  // Check if occupied RIGHT NOW
+  const currentActive = bookings.find(
+    (b) => new Date(b.startTime) <= now && now < new Date(b.endTime)
+  );
+  
+  // Find the NEXT booking
+  const currentUpcoming = bookings
+    .filter((b) => new Date(b.startTime) > now)
+    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))[0];
 
-    // Determine Status
-    let currentStatus = "Available";
-    if (currentActive) {
-        currentStatus = "Occupied";
-    } else if (currentUpcoming) {
-        // Only show "Upcoming" if starts within 30 mins
-        const diffInMinutes = (new Date(currentUpcoming.startTime) - now) / 1000 / 60;
-        if (diffInMinutes <= 30) {
-            currentStatus = "Upcoming";
-        } else {
-            currentStatus = "Available"; 
-        }
-    }
+  // Determine Status
+  let currentStatus = "Available";
+  if (currentActive) {
+      currentStatus = "Occupied";
+  } else if (currentUpcoming) {
+      // Only show "Upcoming" if starts within 30 mins
+      const diffInMinutes = (new Date(currentUpcoming.startTime) - now) / 1000 / 60;
+      if (diffInMinutes <= 30) {
+          currentStatus = "Upcoming";
+      } else {
+          currentStatus = "Available"; 
+      }
+  }
 
-    const currentDisplay = currentActive || currentUpcoming;
+  const currentDisplay = currentActive || currentUpcoming;
 
-    const title = currentDisplay 
-      ? (currentDisplay.description || (currentDisplay.bookedBy?.username || currentStatus)) 
-      : (item.eventTitle || "Free for bookings");
+  const displayTitle = currentDisplay 
+    ? (currentDisplay.description || (currentDisplay.bookedBy?.username || currentStatus)) 
+    : (item.eventTitle || "Free for bookings");
 
-    return {
-      status: currentStatus,
-      displayBooking: currentDisplay,
-      displayTitle: title,
-      displayStart: currentDisplay ? currentDisplay.startTime : item.startTime,
-      displayEnd: currentDisplay ? currentDisplay.endTime : item.endTime,
-      activeBooking: currentActive,
-      upcoming: currentUpcoming
-    };
-  }, [item, item.bookings, item.lastUpdated]); // <--- THIS IS THE FIX
+  // Destructure values for the UI
+  const status = currentStatus;
+  const displayBooking = currentDisplay;
+  const displayStart = currentDisplay ? currentDisplay.startTime : item.startTime;
+  const displayEnd = currentDisplay ? currentDisplay.endTime : item.endTime;
+  const activeBooking = currentActive;
+  const upcoming = currentUpcoming;
 
   // --- 2. PERMISSIONS ---
-  const canCancel = displayBooking && isAdmin; 
+  // FIX: Ensure we don't show cancel button for legacy/placeholder events
+  const canCancel = displayBooking && isAdmin && displayBooking.id !== "__legacy__";
 
   // --- 3. UTILS ---
   const formatTimeWithAmPm = (isoString) => {
@@ -83,14 +85,15 @@ export default function RoomCard({
     });
   };
 
-  const catImageUrl = useMemo(() => {
+  const getCatImageUrl = () => {
     const baseUrl = "https://cataas.com/cat";
     let tags = ['happy', 'cute'];
     if (status === "Occupied") tags = ['angry', 'business'];
     else if (status === "Upcoming") tags = ['curious', 'waiting'];
     const randomTag = tags[Math.floor(Math.random() * tags.length)];
-    return `${baseUrl}?tag=${randomTag}`; 
-  }, [status]); 
+    return `${baseUrl}?tag=${randomTag}&uid=${item.id}-${status}`; 
+  };
+  const catImageUrl = getCatImageUrl();
 
   const getStatusColor = () => {
     if (status === "Upcoming") return "#FFD166";
@@ -99,6 +102,9 @@ export default function RoomCard({
   };
 
   const roomInitials = String(item.name || "").split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
+
+  // Check if the current display booking is loading
+  const isCancelling = displayBooking && loadingId === displayBooking.id;
 
   return (
     <Pressable 
@@ -138,7 +144,7 @@ export default function RoomCard({
                 </Pressable>
             )}
 
-            {/* CANCEL BUTTON */}
+            {/* CANCEL BUTTON (UPDATED WITH LOCAL UPDATE) */}
             {canCancel && (
               <Pressable
                 onPress={(e) => {
@@ -153,15 +159,27 @@ export default function RoomCard({
                         return;
                     }
 
+                    // 1. Show loading state
+                    setLoadingId(displayBooking.id);
+                    
+                    // 2. Hide this booking immediately (Local Optimistic Update)
+                    setCancelledIds(prev => [...prev, displayBooking.id]);
+
+                    // 3. Trigger parent action (Database Update)
                     onLeavePress(item, displayBooking.id);
                 }}
+                disabled={isCancelling} 
                 style={({ pressed }) => [
                     styles.leaveBtn, 
-                    { opacity: pressed ? 0.7 : 1 }
+                    { opacity: pressed || isCancelling ? 0.7 : 1, minWidth: 80, justifyContent: 'center', alignItems: 'center' }
                 ]}
                 hitSlop={10}
               >
-                <Text style={styles.leaveBtnText}>Admin Cancel</Text>
+                {isCancelling ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                    <Text style={styles.leaveBtnText}>Admin Cancel</Text>
+                )}
               </Pressable>
             )}
 
