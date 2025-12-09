@@ -1,11 +1,11 @@
 {
   "expo": {
     "scheme": "SchedulerApp",
-    "name": "MobProg_SchedulerApp",
+    "name": "MobProg_RoomManagement",
     "slug": "MobProg_SchedulerApp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/appicon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
